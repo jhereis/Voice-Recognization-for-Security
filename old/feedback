@@ -1,0 +1,84 @@
+import sounddevice as sd
+from scipy.io.wavfile import write
+import librosa
+import numpy as np
+import tensorflow as tf
+import uuid
+import os
+import csv
+from ibm_watson import SpeechToTextV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+# 📌 Configurações do IBM Watson
+API_KEY = 'sua_api_key_aqui'
+URL = 'sua_url_aqui'
+
+authenticator = IAMAuthenticator(API_KEY)
+stt = SpeechToTextV1(authenticator=authenticator)
+stt.set_service_url(URL)
+
+# 🎙️ Função para gravar áudio
+def gravar_audio(duracao, arquivo):
+    fs = 44100
+    print("🎙️ Gravando...")
+    audio = sd.rec(int(duracao * fs), samplerate=fs, channels=1)
+    sd.wait()
+    write(arquivo, fs, audio)
+    print(f"✅ Gravação salva: {arquivo}")
+
+# 🧠 Reconhecimento de voz
+def reconhecer_voz_ibm(arquivo):
+    with open(arquivo, 'rb') as audio_file:
+        resposta = stt.recognize(
+            audio=audio_file,
+            content_type='audio/wav',
+            model='pt-BR_BroadbandModel'
+        ).get_result()
+    try:
+        texto = resposta['results'][0]['alternatives'][0]['transcript']
+        return texto
+    except (IndexError, KeyError):
+        return "Texto não reconhecido"
+
+# 💬 Detecção de emoção
+def extrair_emocao(texto):
+    texto = texto.lower().strip()
+    padroes_emocao = {
+        'medo': ["tenho medo", "estou com medo", "assustado", "apavorado"],
+        'raiva': ["estou com raiva", "nervoso", "irritado", "furioso"],
+        'felicidade': ["estou feliz", "contente", "alegre", "animado"],
+        'tristeza': ["estou triste", "chorando", "desanimado", "deprimido"]
+    }
+    for emocao, padroes in padroes_emocao.items():
+        for padrao in padroes:
+            if padrao in texto:
+                return emocao
+    return 'neutro'
+
+# 🧾 Função para salvar feedback se detectar errado
+def salvar_feedback(texto, emocao_detectada, esperado=""):
+    with open("feedback.csv", "a", newline='', encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([texto, emocao_detectada, f"esperado: {esperado}"])
+
+# 🔐 Sistema de segurança com análise
+def sistema_seguranca():
+    nome_arquivo = f"voz_{uuid.uuid4().hex}.wav"
+    gravar_audio(5, nome_arquivo)
+    
+    texto = reconhecer_voz_ibm(nome_arquivo)
+    emocao = extrair_emocao(texto)
+
+    print(f"\n🗣️ Texto reconhecido: {texto}")
+    print(f"🧠 Emoção detectada: {emocao}")
+
+    if emocao in ['medo', 'raiva']:
+        print("🚨 Acesso bloqueado por risco detectado.")
+    elif emocao == 'neutro':
+        print("❌ Acesso negado. Emoção não identificada.")
+        salvar_feedback(texto, emocao)
+    else:
+        print("✅ Acesso liberado com segurança.")
+
+# ▶️ Executar
+sistema_seguranca()
