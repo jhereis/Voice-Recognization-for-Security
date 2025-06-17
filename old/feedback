@@ -10,8 +10,8 @@ from ibm_watson import SpeechToTextV1
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 
 # 📌 Configurações do IBM Watson
-API_KEY = 'sua_api_key_aqui'
-URL = 'sua_url_aqui'
+API_KEY = 0GwP85CeCaKSUde
+URL = https://api.au-syd.speech-to-text.watson.cloud.ibm.com/instances/cf7b-4cf3-babd-cb0e4f8ea11f
 
 authenticator = IAMAuthenticator(API_KEY)
 stt = SpeechToTextV1(authenticator=authenticator)
